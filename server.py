@@ -84,6 +84,7 @@ def purchasePlaces():
 
     placesRequired = int(request.form["places"])
     club_points = int(club["points"])
+    competition_places = int(competition["numberOfPlaces"])
     place_cost = 1
 
     if placesRequired < 1:
@@ -96,6 +97,11 @@ def purchasePlaces():
         flash("You don't have enough points available")
         status_code = 400
 
+    elif competition_places < placesRequired:
+
+        flash("You can't book more places than available")
+        status_code = 400
+
     elif placesRequired + getBooking(club["name"], competition["name"]) > 12:
 
         flash("You can't book more than 12 places per competition")
@@ -104,9 +110,7 @@ def purchasePlaces():
     else:
 
         club["points"] = club_points - (placesRequired * place_cost)
-        competition["numberOfPlaces"] = (
-            int(competition["numberOfPlaces"]) - placesRequired
-        )
+        competition["numberOfPlaces"] = competition_places - placesRequired
 
         addBooking(club["name"], competition["name"], placesRequired)
 
