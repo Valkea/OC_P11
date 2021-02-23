@@ -1,9 +1,6 @@
 # coding : utf-8
 
 import server
-import html
-
-from flask import escape
 
 
 class TestServer:
@@ -31,6 +28,11 @@ class TestServer:
         #         "numberOfPlaces": "13",
         #     },
         # ]
+
+    def setup_method(self, method):
+        print("RESET")
+        server.competitions = server.loadCompetitions()
+        server.clubs = server.loadClubs()
 
     # --- HELPERS --- #
 
@@ -126,10 +128,66 @@ class TestServer:
             assert str.encode(f"Number of Places: {places-num_places}") in rv.data
             assert str.encode(f"Points available: {points-booked}") in rv.data
 
+    def test_sad_purchasePlaces_12_places_max__all_in_one(self):
+        """ Book more than 12 places > forbidden """
+
+        print("INIT:", self.competitions, self.clubs)
+
+        points = int(self.clubs[0]["points"])
+        slots = int(self.competitions[0]["numberOfPlaces"])
+
+        rv = self.app.post(
+            "/purchasePlaces",
+            data={
+                "places": 13,
+                "club": self.clubs[0]["name"],
+                "competition": self.competitions[0]["name"],
+            },
+        )
+
+        print(rv.data, rv.status_code)
+
+        assert rv.status_code in [400]
+        assert str.encode(f"Number of Places: {slots}") in rv.data
+        assert str.encode(f"Points available: {points}") in rv.data
+        assert b"You can&#39;t book more than 12 places per competition" in rv.data
+
+    def test_sad_purchasePlaces_12_places_max__step_by_step(self):
+        """ Book more than 12 places > forbidden """
+
+        print("INIT:", self.competitions, self.clubs)
+
+        points = int(self.clubs[0]["points"])
+        slots = int(self.competitions[0]["numberOfPlaces"])
+        booked = 0
+
+        num_actions = 12 + 1
+
+        for i in range(1, num_actions + 1):
+            rv = self.app.post(
+                "/purchasePlaces",
+                data={
+                    "places": 1,
+                    "club": self.clubs[0]["name"],
+                    "competition": self.competitions[0]["name"],
+                },
+            )
+
+            booked += 1
+            print(i, "\n", rv.data, rv.status_code, "\n", server.booking)
+
+            if i < num_actions - 1:
+                assert rv.status_code in [200]
+                assert str.encode(f"Number of Places: {slots-booked}") in rv.data
+                assert str.encode(f"Points available: {points-booked}") in rv.data
+
+        assert rv.status_code in [400]
+        assert b"You can&#39;t book more than 12 places per competition" in rv.data
+
     def test_happy_purchasePlaces_all_club_points(self):
         """ Use all points of a club """
 
-        points = int(self.clubs[0]["points"])
+        points = int(self.clubs[1]["points"])
         slots = int(self.competitions[0]["numberOfPlaces"])
         booked = 0
 
@@ -138,7 +196,7 @@ class TestServer:
                 "/purchasePlaces",
                 data={
                     "places": 1,
-                    "club": self.clubs[0]["name"],
+                    "club": self.clubs[1]["name"],
                     "competition": self.competitions[0]["name"],
                 },
             )
@@ -153,6 +211,7 @@ class TestServer:
                 assert str.encode(f"Points available: {points-booked}") in rv.data
 
         assert rv.status_code in [400]
+        assert b"Points available: 0" in rv.data
         assert b"You don&#39;t have enough points available" in rv.data
 
     def test_happy_purchasePlaces_all_compet_places(self):
