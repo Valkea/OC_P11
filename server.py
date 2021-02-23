@@ -86,7 +86,12 @@ def purchasePlaces():
     club_points = int(club["points"])
     place_cost = 1
 
-    if club_points < placesRequired * place_cost:
+    if placesRequired < 1:
+
+        flash("Something went wrong-please try again")
+        status_code = 400
+
+    elif club_points < placesRequired * place_cost:
 
         flash("You don't have enough points available")
         status_code = 400
