@@ -1,4 +1,9 @@
+# coding : utf-8
+
 import server
+import html
+
+from flask import escape
 
 
 class TestServer:
@@ -100,20 +105,25 @@ class TestServer:
         """ Book less places than club points or competitions available places """
 
         points = int(self.clubs[0]["points"])
-        booked = 1
+        booked = 0
+        num_places = 1
         for competition in self.competitions:
             places = int(competition["numberOfPlaces"])
             rv = self.app.post(
                 "/purchasePlaces",
                 data={
-                    "places": booked,
+                    "places": num_places,
                     "club": self.clubs[0]["name"],
                     "competition": competition["name"],
                 },
             )
 
+            booked += num_places
+
+            print(rv.data, rv.status_code)
+
             assert rv.status_code in [200]
-            assert str.encode(f"Number of Places: {places-booked}") in rv.data
+            assert str.encode(f"Number of Places: {places-num_places}") in rv.data
             assert str.encode(f"Points available: {points-booked}") in rv.data
 
     def test_happy_purchasePlaces_all_club_points(self):
@@ -123,7 +133,7 @@ class TestServer:
         slots = int(self.competitions[0]["numberOfPlaces"])
         booked = 0
 
-        for i in range(points):
+        for i in range(points + 1):
             rv = self.app.post(
                 "/purchasePlaces",
                 data={
@@ -135,13 +145,15 @@ class TestServer:
 
             booked += 1
 
+            print(rv.data, rv.status_code)
+
             if i < points:
                 assert rv.status_code in [200]
                 assert str.encode(f"Number of Places: {slots-booked}") in rv.data
                 assert str.encode(f"Points available: {points-booked}") in rv.data
 
         assert rv.status_code in [400]
-        assert b"You don't have enough points available" in rv.data
+        assert b"You don&#39;t have enough points available" in rv.data
 
     def test_happy_purchasePlaces_all_compet_places(self):
         """ Book all places of a competition """
@@ -172,7 +184,7 @@ class TestServer:
                 assert str.encode(f"Points available: {points-booked}") in rv.data
 
         assert rv.status_code in [400]
-        assert b"You don't have enough points available" in rv.data
+        assert b"You don&#39;t have enough points available" in rv.data
 
     def test_sad_purchasePlaces_more_than_compet(self):
         """ Book more places than available in the competition """
@@ -189,10 +201,10 @@ class TestServer:
             )
 
             assert rv.status_code in [400]
-            assert b"You can't book more places than available" in rv.data
+            assert b"You can&#39;t book more places than available" in rv.data
 
     def test_sad_purchasePlaces_more_than_club(self):
-        """ Book more places than the number of points available in th club """
+        """ Book more places than the number of points available in the club """
 
         for club in self.clubs:
             for competition in self.competitions:
@@ -207,7 +219,7 @@ class TestServer:
                 )
 
                 assert rv.status_code in [400]
-                assert b"You don't have enough points available" in rv.data
+                assert b"You don&#39;t have enough points available" in rv.data
 
     def test_sad_purchasePlaces_wrong_compet(self):
         """ Book places with an existing club and a non existing competition """
