@@ -9,11 +9,6 @@ class TestServer:
         cls.competitions = server.competitions
         cls.clubs = server.clubs
 
-        cls.ref_competitions = cls.competitions[:]
-        cls.ref_clubs = cls.clubs[:]
-
-        print("INIT1 METHOD", cls.ref_competitions)
-
         # cls.ref_clubs = [
         #     {"name": "Simply Lift", "email": "john@simplylift.co", "points": "13"},
         #     {"name": "Iron Temple", "email": "admin@irontemple.com", "points": "4"},
@@ -31,14 +26,6 @@ class TestServer:
         #         "numberOfPlaces": "13",
         #     },
         # ]
-
-    # def setup_method(self, method):
-
-    #     print("RESET1 METHOD", self.competitions)
-    #     # reset points & places
-    #     self.competitions = server.loadCompetitions()
-    #     self.clubs = server.loadClubs()
-    #     print("RESET2 METHOD", self.competitions)
 
     # --- HELPERS --- #
 
@@ -65,8 +52,8 @@ class TestServer:
         """ Check if wrong email is correctly handled """
 
         rv = self.login("wrong@email.com")
-        assert rv.status_code in [400]
-        assert b"invalid email" in rv.data
+        assert rv.status_code in [404]
+        assert b"The provided email is invalid" in rv.data
 
     # --- TESTS BOOKING --- #
 
@@ -88,8 +75,7 @@ class TestServer:
         for competition in self.competitions:
             rv = self.app.get(f"/book/wrong_compet_name/{self.clubs[0]['name']}")
 
-            # print(rv.data, rv.status_code)
-            assert rv.status_code in [200]
+            assert rv.status_code in [404]
             assert b"Something went wrong-please try again" in rv.data
 
     def test_sad_booking_wrong_club(self):
@@ -98,8 +84,7 @@ class TestServer:
         for competition in self.competitions:
             rv = self.app.get(f"/book/{competition['name']}/wrong_club_name")
 
-            # print(rv.data, rv.status_code)
-            assert rv.status_code in [200]
+            assert rv.status_code in [404]
             assert b"Something went wrong-please try again" in rv.data
 
     # --- TESTS PURCHASE PLACES --- #
@@ -119,15 +104,14 @@ class TestServer:
                 },
             )
 
-            print(rv.data, rv.status_code)
             assert rv.status_code in [200]
             assert str.encode(f"Number of Places: {num_init-num_booked}") in rv.data
 
     def test_happy_purchasePlaces_all_club_points(self):
         """ Use all points of a club """
 
-        points = int(self.clubs[0]['points'])
-        slots = int(self.competitions[0]['numberOfPlaces'])
+        points = int(self.clubs[0]["points"])
+        slots = int(self.competitions[0]["numberOfPlaces"])
         booked = 0
 
         for i in range(points):
@@ -142,25 +126,24 @@ class TestServer:
 
             booked += 1
 
-            # print(rv.data, rv.status_code)
             if i < points:
                 assert rv.status_code in [200]
                 assert str.encode(f"Number of Places: {slots - booked}") in rv.data
 
-        assert rv.status_code in [200]
+        assert rv.status_code in [400]
         assert b"You don't have enough points available" in rv.data
 
     def test_happy_purchasePlaces_all_compet_places(self):
         """ Book all places of a competition """
 
-        slots = int(self.competitions[0]['numberOfPlaces'])  # 25
+        slots = int(self.competitions[0]["numberOfPlaces"])  # 25
         booked = 0
 
         for club in self.clubs:
-            if int(club['points']) <= 0:
+            if int(club["points"]) <= 0:
                 continue
 
-            points = int(club['points'])
+            points = int(club["points"])
 
             rv = self.app.post(
                 "/purchasePlaces",
@@ -173,12 +156,11 @@ class TestServer:
 
             booked += points
 
-            # print(rv.data, rv.status_code)
             if booked <= slots:
                 assert rv.status_code in [200]
                 assert str.encode(f"Number of Places: {slots - booked}") in rv.data
 
-        assert rv.status_code in [200]
+        assert rv.status_code in [400]
         assert b"You don't have enough points available" in rv.data
 
     def test_sad_purchasePlaces_more_than_compet(self):
@@ -195,8 +177,7 @@ class TestServer:
                 },
             )
 
-            # print(rv.data, rv.status_code)
-            assert rv.status_code in [200]
+            assert rv.status_code in [400]
             assert b"You can't book more places than available" in rv.data
 
     def test_sad_purchasePlaces_more_than_club(self):
@@ -214,8 +195,7 @@ class TestServer:
                     },
                 )
 
-                # print(rv.data, rv.status_code)
-                assert rv.status_code in [200]
+                assert rv.status_code in [400]
                 assert b"You don't have enough points available" in rv.data
 
     def test_sad_purchasePlaces_wrong_compet(self):
@@ -230,7 +210,7 @@ class TestServer:
             },
         )
 
-        assert rv.status_code in [200]
+        assert rv.status_code in [404]
         assert b"Something went wrong-please try again" in rv.data
 
     def test_sad_purchasePlaces_wrong_club(self):
@@ -241,9 +221,9 @@ class TestServer:
             data={
                 "places": 1,
                 "club": "fake_club_name",
-                "competition": self.competitions[0]['name'],
+                "competition": self.competitions[0]["name"],
             },
         )
 
-        assert rv.status_code in [200]
+        assert rv.status_code in [404]
         assert b"Something went wrong-please try again" in rv.data
