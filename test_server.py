@@ -99,20 +99,22 @@ class TestServer:
     def test_happy_purchasePlaces_once(self):
         """ Book less places than club points or competitions available places """
 
-        num_booked = 1
+        points = int(self.clubs[0]["points"])
+        booked = 1
         for competition in self.competitions:
-            num_init = int(competition["numberOfPlaces"])
+            places = int(competition["numberOfPlaces"])
             rv = self.app.post(
                 "/purchasePlaces",
                 data={
-                    "places": num_booked,
+                    "places": booked,
                     "club": self.clubs[0]["name"],
                     "competition": competition["name"],
                 },
             )
 
             assert rv.status_code in [200]
-            assert str.encode(f"Number of Places: {num_init-num_booked}") in rv.data
+            assert str.encode(f"Number of Places: {places-booked}") in rv.data
+            assert str.encode(f"Points available: {points-booked}") in rv.data
 
     def test_happy_purchasePlaces_all_club_points(self):
         """ Use all points of a club """
@@ -135,7 +137,8 @@ class TestServer:
 
             if i < points:
                 assert rv.status_code in [200]
-                assert str.encode(f"Number of Places: {slots - booked}") in rv.data
+                assert str.encode(f"Number of Places: {slots-booked}") in rv.data
+                assert str.encode(f"Points available: {points-booked}") in rv.data
 
         assert rv.status_code in [400]
         assert b"You don't have enough points available" in rv.data
@@ -165,7 +168,8 @@ class TestServer:
 
             if booked <= slots:
                 assert rv.status_code in [200]
-                assert str.encode(f"Number of Places: {slots - booked}") in rv.data
+                assert str.encode(f"Number of Places: {slots-booked}") in rv.data
+                assert str.encode(f"Points available: {points-booked}") in rv.data
 
         assert rv.status_code in [400]
         assert b"You don't have enough points available" in rv.data
