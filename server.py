@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import json
 from flask import Flask, render_template, request, redirect, flash, url_for
 
@@ -55,11 +57,25 @@ def purchasePlaces():
         0
     ]
     club = [c for c in clubs if c["name"] == request.form["club"]][0]
+
     placesRequired = int(request.form["places"])
-    club["points"] = int(club["points"]) - placesRequired
-    competition["numberOfPlaces"] = int(competition["numberOfPlaces"]) - placesRequired
-    flash("Great-booking complete!")
-    return render_template("welcome.html", club=club, competitions=competitions)
+    club_points = int(club["points"])
+
+    if placesRequired <= club_points:
+        club["points"] = club_points - placesRequired
+        competition["numberOfPlaces"] = (
+            int(competition["numberOfPlaces"]) - placesRequired
+        )
+        flash("Great-booking complete!")
+        status_code = 200
+    else:
+        flash("You don't have enough points available")
+        status_code = 400
+
+    return (
+        render_template("welcome.html", club=club, competitions=competitions),
+        status_code,
+    )
 
 
 # TODO: Add route for points display
