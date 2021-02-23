@@ -33,6 +33,7 @@ class TestServer:
         print("RESET")
         server.competitions = server.loadCompetitions()
         server.clubs = server.loadClubs()
+        server.booking = {}
 
     # --- HELPERS --- #
 
@@ -251,50 +252,80 @@ class TestServer:
     def test_happy_purchasePlaces_all_compet_places(self):
         """ Book all places of a competition """
 
-        slots = int(self.competitions[0]["numberOfPlaces"])  # 25
+        test_name = "test compet"
+        test_num = 15
+
+        server.competitions.append(
+            {
+                "name": test_name,
+                "date": "2020-10-22 13:30:00",
+                "numberOfPlaces": test_num,
+            }
+        )
+        self.competitions = server.competitions
+
+        print("INIT:", self.competitions, self.clubs, server.booking)
+
+        slots = test_num
         booked = 0
 
         for club in self.clubs:
             if int(club["points"]) <= 0:
                 continue
 
-            points = int(club["points"])
+            points = min(int(club["points"]), 12)
 
             rv = self.app.post(
                 "/purchasePlaces",
                 data={
                     "places": points,
                     "club": club["name"],
-                    "competition": self.competitions[0]["name"],
+                    "competition": test_name,
                 },
             )
 
             booked += points
 
+            print(rv.data, rv.status_code, "\n", server.booking)
+
             if booked <= slots:
                 assert rv.status_code in [200]
                 assert str.encode(f"Number of Places: {slots-booked}") in rv.data
-                assert str.encode(f"Points available: {points-booked}") in rv.data
 
         assert rv.status_code in [400]
-        assert b"You don&#39;t have enough points available" in rv.data
+        assert b"You can&#39;t book more places than available" in rv.data
 
     def test_sad_purchasePlaces_more_than_compet(self):
         """ Book more places than available in the competition """
 
-        for competition in self.competitions:
-            num_booked = int(competition["numberOfPlaces"]) + 1
-            rv = self.app.post(
-                "/purchasePlaces",
-                data={
-                    "places": num_booked,
-                    "club": self.clubs[0]["name"],
-                    "competition": competition["name"],
-                },
-            )
+        test_name = "test compet"
+        test_num = 5
 
-            assert rv.status_code in [400]
-            assert b"You can&#39;t book more places than available" in rv.data
+        server.competitions.append(
+            {
+                "name": test_name,
+                "date": "2020-10-22 13:30:00",
+                "numberOfPlaces": test_num,
+            }
+        )
+        self.competitions = server.competitions
+
+        print("INIT:", self.competitions, self.clubs)
+
+        num_booked = 5 + 1
+        rv = self.app.post(
+            "/purchasePlaces",
+            data={
+                "places": num_booked,
+                "club": self.clubs[0]["name"],
+                "competition": test_name,
+            },
+        )
+
+        print(rv.data, rv.status_code)
+
+        assert rv.status_code in [400]
+        assert b"You can&#39;t book more places than available" in rv.data
 
     def test_sad_purchasePlaces_more_than_club(self):
         """ Book more places than the number of points available in the club """
