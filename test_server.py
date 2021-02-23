@@ -128,6 +128,40 @@ class TestServer:
             assert str.encode(f"Number of Places: {places-num_places}") in rv.data
             assert str.encode(f"Points available: {points-booked}") in rv.data
 
+    def test_sad_purchasePlaces_negative(self):
+        """ Book a negative number of places """
+
+        num_places = -1
+        for competition in self.competitions:
+            rv = self.app.post(
+                "/purchasePlaces",
+                data={
+                    "places": num_places,
+                    "club": self.clubs[0]["name"],
+                    "competition": competition["name"],
+                },
+            )
+
+            assert rv.status_code in [400]
+            assert b"Something went wrong-please try again" in rv.data
+
+    def test_sad_purchasePlaces_zero(self):
+        """ Book a negative number of places """
+
+        num_places = 0
+        for competition in self.competitions:
+            rv = self.app.post(
+                "/purchasePlaces",
+                data={
+                    "places": num_places,
+                    "club": self.clubs[0]["name"],
+                    "competition": competition["name"],
+                },
+            )
+
+            assert rv.status_code in [400]
+            assert b"Something went wrong-please try again" in rv.data
+
     def test_sad_purchasePlaces_12_places_max__all_in_one(self):
         """ Book more than 12 places > forbidden """
 
