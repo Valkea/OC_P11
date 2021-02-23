@@ -55,6 +55,13 @@ class TestServer:
         assert rv.status_code in [404]
         assert b"The provided email is invalid" in rv.data
 
+    def test_sad_login_empty_email(self):
+        """ Check if an empty email field is correctly handled """
+
+        rv = self.login("")
+        assert rv.status_code in [404]
+        assert b"The provided email is invalid" in rv.data
+
     # --- TESTS BOOKING --- #
 
     def test_happy_booking(self):
