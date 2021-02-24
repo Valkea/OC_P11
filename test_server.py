@@ -101,7 +101,7 @@ class TestServer:
             rv = self.app.get(f"/book/wrong_compet_name/{self.clubs[0]['name']}")
 
             assert rv.status_code in [404]
-            assert b"Something went wrong-please try again" in rv.data
+            assert b"The provided competition is invalid" in rv.data
 
     def test_sad_booking_wrong_club(self):
         """ Display the booking page for an existing competition with a non existing club """
@@ -110,7 +110,7 @@ class TestServer:
             rv = self.app.get(f"/book/{competition['name']}/wrong_club_name")
 
             assert rv.status_code in [404]
-            assert b"Something went wrong-please try again" in rv.data
+            assert b"The provided club is invalid" in rv.data
 
     # --- TESTS PURCHASE PLACES --- #
 
@@ -368,7 +368,7 @@ class TestServer:
         )
 
         assert rv.status_code in [404]
-        assert b"Something went wrong-please try again" in rv.data
+        assert b"The provided competition is invalid" in rv.data
 
     def test_sad_purchasePlaces_wrong_club(self):
         """ Book places with an existing competition and a non existing club """
@@ -383,7 +383,7 @@ class TestServer:
         )
 
         assert rv.status_code in [404]
-        assert b"Something went wrong-please try again" in rv.data
+        assert b"The provided club is invalid" in rv.data
 
     # --- TESTS PAST COMPETITIONS --- #
 
@@ -421,5 +421,5 @@ class TestServer:
             f"/book/{self.competitions[0]['name']}/{self.clubs[0]['name']}"
         )
         assert rv.status_code in [400]
-        assert b"Something went wrong-please try again" in rv.data
+        assert b"The booking page for a past competition is closed" in rv.data
         assert b"Welcome" in rv.data
