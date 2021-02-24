@@ -423,3 +423,31 @@ class TestServer:
         assert rv.status_code in [400]
         assert b"The booking page for a past competition is closed" in rv.data
         assert b"Welcome" in rv.data
+
+    # --- TESTS DISPLAY CLUBS' POINTS BOARD --- #
+
+    def test_happy_display_points_board_index(self):
+        """ Check if the points board is displayed on the index page """
+
+        rv = self.app.get("/")
+
+        assert rv.status_code in [200]
+        assert b"Registration Portal" in rv.data
+
+        assert b"Points Board" in rv.data
+        for club in self.clubs:
+            assert str.encode(club["name"]) in rv.data
+            assert str.encode(f"Current Points: {club['points']}") in rv.data
+
+    def test_happy_display_points_board_welcome(self):
+        """ Check if the points board is displayed on the main (welcome) page """
+
+        rv = self.login("john@simplylift.co")
+
+        assert rv.status_code in [200]
+        assert b"Logout" in rv.data
+
+        assert b"Points Board" in rv.data
+        for club in self.clubs:
+            assert str.encode(club["name"]) in rv.data
+            assert str.encode(f"Current Points: {club['points']}") in rv.data
