@@ -14,11 +14,11 @@
             <li>{{message}}</li>
         {% endfor %}
        </ul>
-    {% endif%}
+    {% endif %}
     Points available: {{club['points']}}
     <h3>Competitions:</h3>
     <ul>
-        {% for comp in competitions%}
+        {% for comp in next_competitions%}
         <li>
             {{comp['name']}}<br />
             Date: {{comp['date']}}</br>
@@ -29,6 +29,16 @@
         </li>
         <hr />
         {% endfor %}
+        {% for comp in past_competitions%}
+        <li>
+            {{comp['name']}}<br />
+            Date: {{comp['date']}}</br>
+	    Number of Places: {{comp['numberOfPlaces']}} <br>
+	    Finished
+        </li>
+        <hr />
+        {% endfor %}
+
     </ul>
     {%endwith%}
 

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
+import datetime
 import json
+
 from flask import Flask, render_template, request, redirect, flash, url_for
 
 
@@ -47,6 +49,11 @@ def getBooking(club, competition):
     return booking[club][competition]
 
 
+def formatDate(date_str):
+    """ Return a datetime object from a Y-M-d H:M:S date string """
+    return datetime.datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -56,23 +63,51 @@ def index():
 def showSummary():
     try:
         club = [club for club in clubs if club["email"] == request.form["email"]][0]
-        return render_template("welcome.html", club=club, competitions=competitions)
+        return showSummaryDisplay(club)
     except IndexError:
         flash("The provided email is invalid")
         return render_template("index.html"), 404
+
+
+def showSummaryDisplay(club, status_code=200):
+    now = datetime.datetime.now()
+
+    past_competitions = [
+        compet for compet in competitions if formatDate(compet["date"]) <= now
+    ]
+
+    next_competitions = [
+        compet for compet in competitions if formatDate(compet["date"]) > now
+    ]
+
+    return (
+        render_template(
+            "welcome.html",
+            club=club,
+            past_competitions=past_competitions,
+            next_competitions=next_competitions,
+        ),
+        status_code,
+    )
 
 
 @app.route("/book/<competition>/<club>")
 def book(competition, club):
     foundClub = [c for c in clubs if c["name"] == club][0]
     foundCompetition = [c for c in competitions if c["name"] == competition][0]
-    if foundClub and foundCompetition:
-        return render_template(
-            "booking.html", club=foundClub, competition=foundCompetition
+    now = datetime.datetime.now()
+
+    if foundClub and foundCompetition and formatDate(foundCompetition["date"]) > now:
+
+        return (
+            render_template(
+                "booking.html", club=foundClub, competition=foundCompetition
+            ),
+            200,
         )
     else:
         flash("Something went wrong-please try again")
-        return render_template("welcome.html", club=club, competitions=competitions)
+        return showSummaryDisplay(club, 400)
 
 
 @app.route("/purchasePlaces", methods=["POST"])
@@ -117,10 +152,7 @@ def purchasePlaces():
         flash("Great-booking complete!")
         status_code = 200
 
-    return (
-        render_template("welcome.html", club=club, competitions=competitions),
-        status_code,
-    )
+    return showSummaryDisplay(club, status_code)
 
 
 # TODO: Add route for points display
