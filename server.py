@@ -5,6 +5,25 @@ import json
 
 from flask import Flask, render_template, request, redirect, flash, url_for
 
+# ----- INIT APPLICATION -----
+
+app = Flask(__name__)
+app.secret_key = "something_special"
+
+
+# ----- HELPER FUNCTIONS -----
+
+
+def formatDate(date_str):
+    """ Return a datetime object from a Y-M-d H:M:S date string """
+    return datetime.datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+
+
+# ----- DATA HANDLING -----
+
+
+# -- load jsons
+
 
 def loadClubs():
     with open("clubs.json") as c:
@@ -18,12 +37,7 @@ def loadCompetitions():
         return listOfCompetitions
 
 
-app = Flask(__name__)
-app.secret_key = "something_special"
-
-competitions = loadCompetitions()
-clubs = loadClubs()
-booking = {}
+# -- save bookings in dict
 
 
 def addBooking(club, competition, places):
@@ -49,9 +63,29 @@ def getBooking(club, competition):
     return booking[club][competition]
 
 
-def formatDate(date_str):
-    """ Return a datetime object from a Y-M-d H:M:S date string """
-    return datetime.datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+# -- define globals
+
+competitions = loadCompetitions()
+clubs = loadClubs()
+booking = {}
+
+
+# ----- EXCEPTIONS -----
+
+
+class PointValueError(Exception):
+    pass
+
+
+class PlaceValueError(Exception):
+    pass
+
+
+class EventDateError(Exception):
+    pass
+
+
+# ----- ROUTES -----
 
 
 @app.route("/")
@@ -70,6 +104,7 @@ def showSummary():
 
 
 def showSummaryDisplay(club, status_code=200):
+
     now = datetime.datetime.now()
 
     past_competitions = [
@@ -93,64 +128,97 @@ def showSummaryDisplay(club, status_code=200):
 
 @app.route("/book/<competition>/<club>")
 def book(competition, club):
-    foundClub = [c for c in clubs if c["name"] == club][0]
-    foundCompetition = [c for c in competitions if c["name"] == competition][0]
-    now = datetime.datetime.now()
 
-    if foundClub and foundCompetition and formatDate(foundCompetition["date"]) > now:
+    # Is the provided club valid ?
+    try:
+        foundClub = [c for c in clubs if c["name"] == club][0]
+    except IndexError:
+        flash("The provided club is invalid")
+        return render_template("index.html"), 404
 
-        return (
-            render_template(
-                "booking.html", club=foundClub, competition=foundCompetition
-            ),
-            200,
-        )
-    else:
-        flash("Something went wrong-please try again")
-        return showSummaryDisplay(club, 400)
+    # Is the provided competition valid ?
+    # Is the competition date valid ?
+    try:
+        foundCompetition = [c for c in competitions if c["name"] == competition][0]
+
+        now = datetime.datetime.now()
+
+        if formatDate(foundCompetition["date"]) > now:
+            return (
+                render_template(
+                    "booking.html", club=foundClub, competition=foundCompetition
+                ),
+                200,
+            )
+        else:
+            raise EventDateError("The booking page for a past competition is closed")
+
+    except IndexError:
+        flash("The provided competition is invalid")
+        status_code = 404
+
+    except EventDateError as error_msg:
+        flash(error_msg)
+        status_code = 400
+
+    return showSummaryDisplay(foundClub, status_code)
 
 
 @app.route("/purchasePlaces", methods=["POST"])
 def purchasePlaces():
-    competition = [c for c in competitions if c["name"] == request.form["competition"]][
-        0
-    ]
-    club = [c for c in clubs if c["name"] == request.form["club"]][0]
 
-    placesRequired = int(request.form["places"])
-    club_points = int(club["points"])
-    competition_places = int(competition["numberOfPlaces"])
-    place_cost = 1
+    # Is the provided club valid ?
+    try:
+        club = [c for c in clubs if c["name"] == request.form["club"]][0]
+    except IndexError:
+        flash("The provided club is invalid")
+        return render_template("index.html"), 404
 
-    if placesRequired < 1:
+    # Is the provided competition valid ?
+    # Also check the various possible input errors
+    try:
+        competition = [
+            c for c in competitions if c["name"] == request.form["competition"]
+        ][0]
 
-        flash("Something went wrong-please try again")
+        placesRequired = int(request.form["places"])
+        club_points = int(club["points"])
+        competition_places = int(competition["numberOfPlaces"])
+        place_cost = 1
+
+        if placesRequired < 1:
+
+            raise PointValueError("Something went wrong-please try again")
+
+        elif club_points < placesRequired * place_cost:
+
+            raise PointValueError("You don't have enough points available")
+
+        elif competition_places < placesRequired:
+
+            raise PlaceValueError("You can't book more places than available")
+
+        elif placesRequired + getBooking(club["name"], competition["name"]) > 12:
+
+            raise PlaceValueError("You can't book more than 12 places per competition")
+
+        else:
+
+            club["points"] = club_points - (placesRequired * place_cost)
+            competition["numberOfPlaces"] = competition_places - placesRequired
+
+            addBooking(club["name"], competition["name"], placesRequired)
+
+            flash("Great-booking complete!")
+            status_code = 200
+
+    except IndexError:
+        flash("The provided competition is invalid")
+        status_code = 404
+
+    except (PointValueError, PlaceValueError) as error_msg:
+        flash(error_msg)
         status_code = 400
-
-    elif club_points < placesRequired * place_cost:
-
-        flash("You don't have enough points available")
-        status_code = 400
-
-    elif competition_places < placesRequired:
-
-        flash("You can't book more places than available")
-        status_code = 400
-
-    elif placesRequired + getBooking(club["name"], competition["name"]) > 12:
-
-        flash("You can't book more than 12 places per competition")
-        status_code = 400
-
-    else:
-
-        club["points"] = club_points - (placesRequired * place_cost)
-        competition["numberOfPlaces"] = competition_places - placesRequired
-
-        addBooking(club["name"], competition["name"], placesRequired)
-
-        flash("Great-booking complete!")
-        status_code = 200
 
     return showSummaryDisplay(club, status_code)
 
