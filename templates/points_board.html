@@ -1,0 +1,10 @@
+<h3>Clubs' Points Board:</h3>
+<ul>
+	{% for club in clubs %}
+	<li>
+		{{club['name']}} <br>
+		Current Points: {{club['points']}}
+	</li>
+	<hr />
+	{% endfor %}
+</ul>

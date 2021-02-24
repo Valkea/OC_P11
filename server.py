@@ -90,7 +90,7 @@ class EventDateError(Exception):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", clubs=clubs)
 
 
 @app.route("/showSummary", methods=["POST"])
@@ -100,7 +100,7 @@ def showSummary():
         return showSummaryDisplay(club)
     except IndexError:
         flash("The provided email is invalid")
-        return render_template("index.html"), 404
+        return render_template("index.html", clubs=clubs), 404
 
 
 def showSummaryDisplay(club, status_code=200):
@@ -121,6 +121,7 @@ def showSummaryDisplay(club, status_code=200):
             club=club,
             past_competitions=past_competitions,
             next_competitions=next_competitions,
+            clubs=clubs,
         ),
         status_code,
     )
@@ -134,7 +135,7 @@ def book(competition, club):
         foundClub = [c for c in clubs if c["name"] == club][0]
     except IndexError:
         flash("The provided club is invalid")
-        return render_template("index.html"), 404
+        return render_template("index.html", clubs=clubs), 404
 
     # Is the provided competition valid ?
     # Is the competition date valid ?
@@ -172,7 +173,7 @@ def purchasePlaces():
         club = [c for c in clubs if c["name"] == request.form["club"]][0]
     except IndexError:
         flash("The provided club is invalid")
-        return render_template("index.html"), 404
+        return render_template("index.html", clubs=clubs), 404
 
     # Is the provided competition valid ?
     # Also check the various possible input errors
