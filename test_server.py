@@ -1,5 +1,7 @@
 # coding : utf-8
 
+import datetime
+
 import server
 
 
@@ -75,9 +77,17 @@ class TestServer:
     def test_happy_booking(self):
         """ Display the booking page for an existing competition with an existing club """
 
+        now = datetime.datetime.now()
+
         for club in self.clubs:
             for competition in self.competitions:
                 rv = self.app.get(f"/book/{competition['name']}/{club['name']}")
+
+                print(rv.data, rv.status_code, "\n")
+
+                if server.formatDate(competition["date"]) <= now:
+                    continue
+
                 assert rv.status_code in [200]
                 assert (
                     str.encode(f"Places available: {competition['numberOfPlaces']}")
@@ -374,3 +384,42 @@ class TestServer:
 
         assert rv.status_code in [404]
         assert b"Something went wrong-please try again" in rv.data
+
+    # --- TESTS PAST COMPETITIONS --- #
+
+    def test_happy_showSummary_with_future_events(self):
+        """ Show summary with both past & incoming events """
+
+        # incoming_date = datetime.datetime.now() + datetime.timedelta(days=20, hours=3)
+        # test_incoming_date = incoming_date.strftime("%Y-%m-%d %H:%M:%S")
+        # test_name = "test compet"
+        # test_num = 5
+
+        # server.competitions.append(
+        #     {
+        #         "name": test_name,
+        #         "date": test_incoming_date,
+        #         "numberOfPlaces": test_num,
+        #     }
+        # )
+        # self.competitions = server.competitions
+
+        # NOTE replaced the above code with 2 new incoming events in the json file
+
+        rv = self.login("john@simplylift.co")
+        print(rv.data, rv.status_code)
+
+        assert rv.status_code in [200]
+        assert b"Book Places" in rv.data
+        assert rv.data.count(b"Finished") == 2
+        assert rv.data.count(b"Book Places") == 2
+
+    def test_sad_booking_past_compet(self):
+        """ Must redirect to summary if someone directly write the booking url of a past competition """
+
+        rv = self.app.get(
+            f"/book/{self.competitions[0]['name']}/{self.clubs[0]['name']}"
+        )
+        assert rv.status_code in [400]
+        assert b"Something went wrong-please try again" in rv.data
+        assert b"Welcome" in rv.data
