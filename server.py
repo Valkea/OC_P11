@@ -22,6 +22,7 @@ def formatDate(date_str):
 # ----- DATA HANDLING -----
 
 COST_PER_PLACE = 3
+MAX_PLACES_PER_CLUB = 12
 
 # -- load jsons
 
@@ -146,9 +147,19 @@ def book(competition, club):
         now = datetime.datetime.now()
 
         if formatDate(foundCompetition["date"]) > now:
+
+            booked = getBooking(foundClub["name"], foundCompetition["name"])
+
             return (
                 render_template(
-                    "booking.html", club=foundClub, competition=foundCompetition
+                    "booking.html",
+                    club=foundClub,
+                    competition=foundCompetition,
+                    booked=booked,
+                    maxplaces=min(
+                        int(foundClub["points"]) // COST_PER_PLACE,
+                        MAX_PLACES_PER_CLUB - booked,
+                    ),
                 ),
                 200,
             )
@@ -199,9 +210,14 @@ def purchasePlaces():
 
             raise PlaceValueError("You can't book more places than available")
 
-        elif placesRequired + getBooking(club["name"], competition["name"]) > 12:
+        elif (
+            placesRequired + getBooking(club["name"], competition["name"])
+            > MAX_PLACES_PER_CLUB
+        ):
 
-            raise PlaceValueError("You can't book more than 12 places per competition")
+            raise PlaceValueError(
+                f"You can't book more than {MAX_PLACES_PER_CLUB} places per competition"
+            )
 
         else:
 
