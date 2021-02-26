@@ -13,6 +13,8 @@ class TestServer:
         cls.competitions = server.competitions
         cls.clubs = server.clubs
 
+        cls.cost_per_place = server.COST_PER_PLACE
+
         # cls.ref_clubs = [
         #     {"name": "Simply Lift", "email": "john@simplylift.co", "points": "13"},
         #     {"name": "Iron Temple", "email": "admin@irontemple.com", "points": "4"},
@@ -44,6 +46,37 @@ class TestServer:
 
     def logout(self):
         return self.app.get("/logout", follow_redirects=True)
+
+    def add_fake_club(self, points=0, name="fake_club", email="fake@email.com"):
+        """ Create a fake club for test purpose """
+
+        server.clubs.append(
+            {
+                "name": f"{name}",
+                "email": f"{email}",
+                "points": f"{points}",
+            }
+        )
+        self.clubs = server.clubs
+
+        return len(server.clubs) - 1
+
+    def add_fake_competition(self, places, name="fake_compet", day_offset=0):
+        """ Create a fake competition for test purpose """
+
+        date = datetime.datetime.now() + datetime.timedelta(days=day_offset)
+        date = date.strftime("%Y-%m-%d %H:%M:%S")
+
+        server.competitions.append(
+            {
+                "name": f"{name}",
+                "date": f"{date}",
+                "numberOfPlaces": f"{places}",
+            }
+        )
+        self.competitions = server.competitions
+
+        return len(server.competitions) - 1
 
     # --- TESTS LOGIN / LOGOUT --- #
 
@@ -135,9 +168,11 @@ class TestServer:
 
             print(rv.data, rv.status_code)
 
+            cost = points - (self.cost_per_place * booked)
+
             assert rv.status_code in [200]
             assert str.encode(f"Number of Places: {places-num_places}") in rv.data
-            assert str.encode(f"Points available: {points-booked}") in rv.data
+            assert str.encode(f"Points available: {cost}") in rv.data
 
     def test_sad_purchasePlaces_negative(self):
         """ Book a negative number of places """
@@ -176,16 +211,18 @@ class TestServer:
     def test_sad_purchasePlaces_12_places_max__all_in_one(self):
         """ Book more than 12 places > forbidden """
 
+        club_index = self.add_fake_club(points=100)
+
         print("INIT:", self.competitions, self.clubs)
 
-        points = int(self.clubs[0]["points"])
+        points = int(self.clubs[club_index]["points"])
         slots = int(self.competitions[0]["numberOfPlaces"])
 
         rv = self.app.post(
             "/purchasePlaces",
             data={
                 "places": 13,
-                "club": self.clubs[0]["name"],
+                "club": self.clubs[club_index]["name"],
                 "competition": self.competitions[0]["name"],
             },
         )
@@ -200,9 +237,11 @@ class TestServer:
     def test_sad_purchasePlaces_12_places_max__step_by_step(self):
         """ Book more than 12 places > forbidden """
 
+        club_index = self.add_fake_club(points=100)
+
         print("INIT:", self.competitions, self.clubs)
 
-        points = int(self.clubs[0]["points"])
+        points = int(self.clubs[club_index]["points"])
         slots = int(self.competitions[0]["numberOfPlaces"])
         booked = 0
 
@@ -213,7 +252,7 @@ class TestServer:
                 "/purchasePlaces",
                 data={
                     "places": 1,
-                    "club": self.clubs[0]["name"],
+                    "club": self.clubs[club_index]["name"],
                     "competition": self.competitions[0]["name"],
                 },
             )
@@ -222,9 +261,10 @@ class TestServer:
             print(i, "\n", rv.data, rv.status_code, "\n", server.booking)
 
             if i < num_actions - 1:
+                cost = points - (self.cost_per_place * booked)
                 assert rv.status_code in [200]
                 assert str.encode(f"Number of Places: {slots-booked}") in rv.data
-                assert str.encode(f"Points available: {points-booked}") in rv.data
+                assert str.encode(f"Points available: {cost}") in rv.data
 
         assert rv.status_code in [400]
         assert b"You can&#39;t book more than 12 places per competition" in rv.data
@@ -232,75 +272,77 @@ class TestServer:
     def test_happy_purchasePlaces_all_club_points(self):
         """ Use all points of a club """
 
-        points = int(self.clubs[1]["points"])
-        slots = int(self.competitions[0]["numberOfPlaces"])
+        slots = 10
+        points = 10
         booked = 0
 
-        for i in range(points + 1):
+        compet_index = self.add_fake_competition(
+            places=slots, name="test compet", day_offset=20
+        )
+        club_index = self.add_fake_club(points=points)
+
+        while True:
+
             rv = self.app.post(
                 "/purchasePlaces",
                 data={
                     "places": 1,
-                    "club": self.clubs[1]["name"],
-                    "competition": self.competitions[0]["name"],
+                    "club": self.clubs[club_index]["name"],
+                    "competition": self.competitions[compet_index]["name"],
                 },
             )
 
+            print(rv.data, rv.status_code, "\r")
+
+            if points < self.cost_per_place:
+                break
+
+            assert rv.status_code in [200]
+
             booked += 1
+            assert str.encode(f"Number of Places: {slots-booked}") in rv.data
 
-            print(rv.data, rv.status_code)
-
-            if i < points:
-                assert rv.status_code in [200]
-                assert str.encode(f"Number of Places: {slots-booked}") in rv.data
-                assert str.encode(f"Points available: {points-booked}") in rv.data
+            points -= self.cost_per_place
+            assert str.encode(f"Points available: {points}") in rv.data
 
         assert rv.status_code in [400]
-        assert b"Points available: 0" in rv.data
         assert b"You don&#39;t have enough points available" in rv.data
 
     def test_happy_purchasePlaces_all_compet_places(self):
         """ Book all places of a competition """
 
-        test_name = "test compet"
-        test_num = 15
-
-        server.competitions.append(
-            {
-                "name": test_name,
-                "date": "2020-10-22 13:30:00",
-                "numberOfPlaces": test_num,
-            }
-        )
-        self.competitions = server.competitions
-
-        print("INIT:", self.competitions, self.clubs, server.booking)
-
-        slots = test_num
+        slots = 10
+        points = 1000
         booked = 0
 
-        for club in self.clubs:
-            if int(club["points"]) <= 0:
-                continue
+        compet_index = self.add_fake_competition(
+            places=slots, name="test compet", day_offset=20
+        )
+        club_index = self.add_fake_club(points=points)
 
-            points = min(int(club["points"]), 12)
+        while True:
 
             rv = self.app.post(
                 "/purchasePlaces",
                 data={
-                    "places": points,
-                    "club": club["name"],
-                    "competition": test_name,
+                    "places": 1,
+                    "club": self.clubs[club_index]["name"],
+                    "competition": self.competitions[compet_index]["name"],
                 },
             )
 
-            booked += points
+            print(rv.data, rv.status_code, "\r")
 
-            print(rv.data, rv.status_code, "\n", server.booking)
+            if booked + 1 > slots:
+                break
 
-            if booked <= slots:
-                assert rv.status_code in [200]
-                assert str.encode(f"Number of Places: {slots-booked}") in rv.data
+            assert rv.status_code in [200]
+
+            booked += 1
+            assert str.encode(f"Number of Places: {slots-booked}") in rv.data
+
+            points -= self.cost_per_place
+            assert str.encode(f"Points available: {points}") in rv.data
 
         assert rv.status_code in [400]
         assert b"You can&#39;t book more places than available" in rv.data
@@ -308,27 +350,18 @@ class TestServer:
     def test_sad_purchasePlaces_more_than_compet(self):
         """ Book more places than available in the competition """
 
-        test_name = "test compet"
-        test_num = 5
+        slots = 5
+        cName = "test compet"
 
-        server.competitions.append(
-            {
-                "name": test_name,
-                "date": "2020-10-22 13:30:00",
-                "numberOfPlaces": test_num,
-            }
-        )
-        self.competitions = server.competitions
+        _ = self.add_fake_competition(places=slots, name=cName, day_offset=20)
+        club_index = self.add_fake_club(points=100)
 
-        print("INIT:", self.competitions, self.clubs)
-
-        num_booked = 5 + 1
         rv = self.app.post(
             "/purchasePlaces",
             data={
-                "places": num_booked,
-                "club": self.clubs[0]["name"],
-                "competition": test_name,
+                "places": slots + 1,
+                "club": self.clubs[club_index]["name"],
+                "competition": cName,
             },
         )
 
