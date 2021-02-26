@@ -21,6 +21,7 @@ def formatDate(date_str):
 
 # ----- DATA HANDLING -----
 
+COST_PER_PLACE = 3
 
 # -- load jsons
 
@@ -185,13 +186,12 @@ def purchasePlaces():
         placesRequired = int(request.form["places"])
         club_points = int(club["points"])
         competition_places = int(competition["numberOfPlaces"])
-        place_cost = 1
 
         if placesRequired < 1:
 
             raise PointValueError("Something went wrong-please try again")
 
-        elif club_points < placesRequired * place_cost:
+        elif club_points < placesRequired * COST_PER_PLACE:
 
             raise PointValueError("You don't have enough points available")
 
@@ -205,7 +205,7 @@ def purchasePlaces():
 
         else:
 
-            club["points"] = club_points - (placesRequired * place_cost)
+            club["points"] = club_points - (placesRequired * COST_PER_PLACE)
             competition["numberOfPlaces"] = competition_places - placesRequired
 
             addBooking(club["name"], competition["name"], placesRequired)
