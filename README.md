@@ -1,51 +1,126 @@
-# gudlift-registration
+# GÜDLFT Registration
 
-1. Why
+This is a proof of concept (POC) project to show a light-weight version of our competition booking platform. The aim is the keep things as light as possible, and use feedback from the users to iterate. The main technology used here is Python with Flask.
 
 
-    This is a proof of concept (POC) project to show a light-weight version of our competition booking platform. The aim is the keep things as light as possible, and use feedback from the users to iterate.
+## Installation
 
-2. Getting Started
+In order to use this project locally, you need to follow the steps below:
 
-    This project uses the following technologies:
+### First, 
+let's duplicate the project github repository
 
-    * Python v3.x+
+```bash
+>>> git clone https://github.com/Valkea/OC_P11.git
+>>> cd OC_P11
+```
 
-    * [Flask](https://flask.palletsprojects.com/en/1.1.x/)
+### Secondly,
+let's create a virtual environment and install the required Python libraries
 
-        Whereas Django does a lot of things for us out of the box, Flask allows us to add only what we need. 
+(Linux or Mac)
+```bash
+>>> python3 -m venv venv
+>>> source venv/bin/activate
+>>> pip install -r requirements.txt
+```
+
+(Windows):
+```bash
+>>> py -m venv venv
+>>> .\venv\Scripts\activate
+>>> py -m pip install -r requirements.txt
+```
+
+
+## Running the project
+
+Once installed, the only required command is the following one
+
+```bash
+>>> export FLASK_APP=server.py
+>>> flask run
+or
+>>> python3 - m flask run
+```
+
+The app should respond with an address you should be able to go to using your browser.
+
+
+## Using the project
+
+visit the given addresse (usually *http://127.0.0.1:5000*) and use one of the demo credentials below:
+
+* john@simplylift.co
+* admin@irontemple.com
+* kate@shelifts.co.uk
+
+Note that, once all the places are booked or the points redeemed, the flask server needs to be restarted in order to reset all the data.
+
+
+## Current Setup
+
+The app is powered by:
+
+* Python v3.x+
+* [Flask](https://flask.palletsprojects.com/en/1.1.x/)
+Whereas Django does a lot of things for us out of the box, Flask allows us to add only what we need.
+* [JSON files](https://www.tutorialspoint.com/json/json_quick_guide.htm).
+This is to get around having a DB until we actually need one. The main ones are:
      
-
-    * [Virtual environment](https://virtualenv.pypa.io/en/stable/installation.html)
-
-        This ensures you'll be able to install the correct packages without interfering with Python on your machine.
-
-        Before you begin, please ensure you have this installed globally. 
+	- *competitions.json* - list of competitions
+	- *clubs.json* - list of clubs with relevant information.
 
 
-3. Installation
+## Tests
 
-    - After cloning, change into the directory and type <code>virtualenv .</code>. This will then set up a a virtual python environment within that directory.
+Unit-tests were written in order to test the route and functions.
 
-    - Next, type <code>source bin/activate</code>. You should see that your command prompt has changed to the name of the folder. This means that you can install packages in here without affecting affecting files outside. To deactivate, type <code>deactivate</code>
+You can run all the tests with the following command
+```bash
+>>> python -m pytest test_server.py -v
+```
 
-    - Rather than hunting around for the packages you need, you can install in one step. Type <code>pip install -r requirements.txt</code>. This will install all the packages listed in the respective file. If you install a package, make sure others know by updating the requirements.txt file. An easy way to do this is <code>pip freeze > requirements.txt</code>
 
-    - Flask requires that you set an environmental variable to the python file. However you do that, you'll want to set the file to be <code>server.py</code>. Check [here](https://flask.palletsprojects.com/en/1.1.x/quickstart/#a-minimal-application) for more details
+## Coverage
 
-    - You should now be ready to test the application. In the directory, type either <code>flask run</code> or <code>python -m flask run</code>. The app should respond with an address you should be able to go to using your browser.
+In order to see how weel we're testing, we decided to use a module called [coverage](https://coverage.readthedocs.io/en/coverage-5.1/).
 
-4. Current Setup
+First we need to run the tests **with the coverage** module using the following command line
 
-    The app is powered by [JSON files](https://www.tutorialspoint.com/json/json_quick_guide.htm). This is to get around having a DB until we actually need one. The main ones are:
-     
-    * competitions.json - list of competitions
-    * clubs.json - list of clubs with relevant information. You can look here to see what email addresses the app will accept for login.
+```bash
+>>> coverage run -m pytest test_server.py -v
+```
 
-5. Testing
+Then we can produce an HTML report *(available in htmlcov)* with
+```bash
+>>> coverage html server.py
+```
 
-    You are free to use whatever testing framework you like-the main thing is that you can show what tests you are using.
+Or simply print the result in the Terminal using
+```bash
+>>> coverage report server.py
+```
 
-    We also like to show how well we're testing, so there's a module called 
-    [coverage](https://coverage.readthedocs.io/en/coverage-5.1/) you should add to your project.
 
+## Performance
+
+Finally, in order to keep an eye on the performances of the application we decided to use the [Locust](https://www.locust.io/).
+
+Start the Flask server as explained before, then run Locust
+```bash
+>>> locust
+```
+The app should respond with an address you should be able to go to using your browser.
+
+Visit the given addresse (usually *http://127.0.0.1:8089*) and set it up swarm the system with some simultaneous users.
+
+* *Number of total users to simulate*: 6
+* *Spawn rate (users spawned/second)*: 1
+* *Host*: (the address provided when runing flask server > usually http://127.0.0.1:5000)
+
+### Failures
+
+At some point, Locust will report *Failures* for the */puchasePlaces*, but this is an expected behavior. Once all the places are booked, the users continue to try booking places, but they are returned a 400 BAD REQUEST HTTP status code along with an error message (and the rest of the page), and Locust log these status code as failures.
+
+Hance, you need to restart the Flask server to reset the data **before** each Locust performance test.
