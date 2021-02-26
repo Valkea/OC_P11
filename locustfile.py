@@ -1,3 +1,5 @@
+import random
+
 from locust import HttpUser, between, task
 
 
@@ -7,7 +9,7 @@ class WebsiteUser(HttpUser):
     def on_start(self):
 
         self.club = "Simply Lift"
-        self.competitions = ["Spring Festival", "Fall Classic"]
+        self.competitions = ["Spring Festival 2050", "Fall Classic 2050"]
 
         # Visit Home page
         self.client.get("/")
@@ -25,9 +27,10 @@ class WebsiteUser(HttpUser):
 
     @task(1)
     def purchasePlaces(self):
-        for competition in self.competitions:
-            self.client.post(
-                "/purchasePlaces",
-                {"places": 1, "club": self.club, "competition": competition},
-                name="/purchasePlaces",
-            )
+        competition = random.choices(self.competitions)
+        # for competition in self.competitions:
+        self.client.post(
+            "/purchasePlaces",
+            {"places": 1, "club": self.club, "competition": competition},
+            name="/purchasePlaces",
+        )
