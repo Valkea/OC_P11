@@ -43,7 +43,17 @@ def loadCompetitions():
 
 
 def addBooking(club, competition, places):
-    """ save club's booking to competitions in a dictionnay """
+    """Save club's booking to competitions in a dictionnay
+
+    Parameters
+    ----------
+    club : str
+        The name of the club booking the places
+    competition : str
+        The name of the competition for which places are booked
+    places : int
+        The number of places to book
+    """
 
     if club not in booking:
         booking[club] = {}
@@ -55,7 +65,15 @@ def addBooking(club, competition, places):
 
 
 def getBooking(club, competition):
-    """ return the current club's booking number for a given competition """
+    """Return the current club's booking number for a given competition
+
+    Parameters
+    ----------
+    club : str
+        The name of the club
+    competition : str
+        The name of the competition
+    """
 
     if club not in booking:
         return 0
@@ -76,14 +94,20 @@ booking = {}
 
 
 class PointValueError(Exception):
+    """ Returned when there is a problem with the clubs' points """
+
     pass
 
 
 class PlaceValueError(Exception):
+    """ Returned when there is a problem with the competitions' places """
+
     pass
 
 
 class EventDateError(Exception):
+    """ Returned when there is an error with competition dates """
+
     pass
 
 
@@ -92,11 +116,20 @@ class EventDateError(Exception):
 
 @app.route("/")
 def index():
+    """This route displays the landing page with the authentificatio form """
+
     return render_template("index.html", clubs=clubs)
 
 
 @app.route("/showSummary", methods=["POST"])
 def showSummary():
+    """This route validates the provided authentification information.
+
+    POST Parameters
+    ----------
+    email : str
+        The email to search in the club 'DB'
+    """
     try:
         club = [club for club in clubs if club["email"] == request.form["email"]][0]
         return showSummaryDisplay(club)
@@ -106,6 +139,24 @@ def showSummary():
 
 
 def showSummaryDisplay(club, status_code=200):
+    """Gather informations for the main page (welcome.html) and render it.
+
+        This main page is called from various route with various HTTP status_code.
+        ( showSummaryDisplay with HTTP 200 )
+        ( book/<compet>/<club> with HTTP 200 / 400 / 404 )
+        ( purchasePlaces with HTTP 200 / 400 / 404 )
+
+        This function will collect past & incoming competion informations along
+        with the current club informations and all the other clubs.
+
+
+    Parameters
+    ----------
+    club : dict
+        The currently 'authentified' club
+    status_code : int
+        The HTTP status_code to return with the body html
+    """
 
     now = datetime.datetime.now()
 
@@ -131,6 +182,18 @@ def showSummaryDisplay(club, status_code=200):
 
 @app.route("/book/<competition>/<club>")
 def book(competition, club):
+    """This route displays the given competition informations along with a purchase form.
+
+    It will display the main page (showSummaryDisplay) instead, if something goes wrong.
+
+    Parameters
+    ----------
+    club : str
+        The name of the currently 'authentified' club
+        # NOTE don't put the name of the identified club in the URL !
+    competition : str
+        The name of the competition to display
+    """
 
     # Is the provided club valid ?
     try:
@@ -174,11 +237,26 @@ def book(competition, club):
         flash(error_msg)
         status_code = 400
 
+    # return redirect(url_for("showSummary"), status_code)
     return showSummaryDisplay(foundClub, status_code)
 
 
 @app.route("/purchasePlaces", methods=["POST"])
 def purchasePlaces():
+    """This route validates the purchase made from the competition booking page.
+
+    Once done, it will display the main page (showSummaryDisplay) again.
+
+    POST Parameters
+    ----------
+    club : str (hidden)
+        The name of the currently 'authentified' club
+    competition : str (hidden)
+        The name of the competition on which to book places
+    places : int
+        The number of places to book for the given club in the given competition
+        if all the validation steps are validated.
+    """
 
     # Is the provided club valid ?
     try:
@@ -238,11 +316,13 @@ def purchasePlaces():
         status_code = 400
 
     return showSummaryDisplay(club, status_code)
-
-
-# TODO: Add route for points display
+    # return redirect(url_for("showSummary"), status_code)
 
 
 @app.route("/logout")
 def logout():
+    """This route redirect to the landing page
+
+    # NOTE : this page should actually logout users...
+    """
     return redirect(url_for("index"))
